@@ -179,16 +179,3 @@ async def run_sql_script(
 
     return {"result": result}
 
-@router.post("/test-bot")
-async def test_bot(
-    db: Annotated[Session, Depends(DBSessionProvider)]
-):
-    guilds = bot.guilds
-    output = []
-
-    for guild in guilds:
-        output.append({
-            "id": str(guild.id),
-            "name": guild.name
-        })
-    return output

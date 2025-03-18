@@ -44,7 +44,7 @@ class Bot(commands.Bot):
 
         # Changes bot's status
         activity = discord.Streaming(
-            name="Working", url='https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+            name="Writing Engineering Thesis", url='https://www.youtube.com/watch?v=blA6y6cvcvY'
         )
         await super().change_presence(status=discord.Status.idle, activity=activity)
 

@@ -35,7 +35,7 @@ class Example(BaseModel):
     name: str
     summary: str | None = None
     description: str | None = None
-    value: dict | BaseModel
+    value: dict | list | BaseModel | str | int | float | None
 
 def CreateExampleResponse(
     *,

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from fastapi import FastAPI, Request, Response, staticfiles
@@ -7,7 +8,7 @@ from sqlalchemy import text
 from app.database import engine, SessionLocal
 from app.domain.model_base import Base
 from app.config import CORS_ORIGINS, SECRET_KEY, ENCRYPTION_ALGORITHM, DATABASE_URL
-from app.routers import oauth2, router, user
+from app.routers import oauth2, router, user, manager
 from app.internal import develop
 from app.internal.admin import create_admin
 from app.domain.token_blacklist.service import get_blacklist_tokens, delete_blacklist_token
@@ -95,11 +96,13 @@ async def lifespan(app: FastAPI):
                 logger.error(e)
 
     # Initialize the bot
-    def run_bot():
-        bot.run()
+    # def run_bot():
+    #     bot.run()
 
-    bot_thread = threading.Thread(target=run_bot, daemon=True)
-    bot_thread.start()
+    # bot_thread = threading.Thread(target=run_bot, daemon=True)
+    # bot_thread.start()
+
+    bot_task = asyncio.create_task(bot.start(os.getenv("DISCORD_TOKEN")))
 
     scheduler = start_scheduler()
 
@@ -107,6 +110,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         scheduler.shutdown()
+        bot_task.cancel()
 
 def create_db() -> None:
     """
@@ -134,6 +138,7 @@ def get_application() -> FastAPI:
     )
 
     fapp.include_router(router)
+    fapp.include_router(manager.router)
     fapp.include_router(oauth2.router)
     fapp.include_router(user.router)
     fapp.include_router(develop.router)
@@ -158,6 +163,7 @@ async def db_session_middleware(
     add it to the request, and close it once the request is finished.
     '''
     response = Response("Internal server error", status_code=500)
+    print(request.query_params)
     response = await call_next(request)
 
     return response
