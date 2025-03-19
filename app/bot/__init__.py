@@ -15,7 +15,7 @@ class Bot(commands.Bot):
             command_prefix="?."
         )
 
-    
+    @DeprecationWarning
     def run(self):
         """
         Method that is run to start the bot
@@ -42,7 +42,7 @@ class Bot(commands.Bot):
 
         # await self.manager.load_extensions(self, logger)
 
-        # Changes bot's status
+        # Changes status
         activity = discord.Streaming(
             name="Writing Engineering Thesis", url='https://www.youtube.com/watch?v=blA6y6cvcvY'
         )

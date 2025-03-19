@@ -1,7 +1,7 @@
 from typing import Annotated, Literal, Optional
 from fastapi import APIRouter, Depends, Response, Form, HTTPException, Path, Body, Query, status, File, UploadFile
 from sqlalchemy.orm import Session
-from app.dependencies import DefaultResponseModel, Authorize, DBSessionProvider, validate_password, CreateExampleResponse, Example, DefaultErrorModel, Responses, CreateAuthResponses, CreateAuthorizeResponses, CreateInternalErrorResponse
+from app.dependencies import DefaultResponseModel, Authorize, DBSessionProvider, IsAdmin, validate_password, CreateExampleResponse, Example, DefaultErrorModel, Responses, CreateAuthResponses, CreateAuthorizeResponses, CreateInternalErrorResponse
 from app.config import SECRET_KEY, ENCRYPTION_ALGORITHM, IP_ADDRESS, IMAGE_DIR, IMAGE_URL
 from pydantic import BaseModel, Field
 from uuid import uuid4
@@ -50,42 +50,42 @@ async def test_bot(
 
     return output
 
-async def send_message(guild_id: int, channel_id: int, message: str):
-    print(f"🔍 Looking for guild {guild_id}...")
+async def send_message_coro(guild_id: int, channel_id: int, message: str, debug: bool = False):
+    if debug: print(f"🔍 Looking for guild {guild_id}...")
     guild = bot.get_guild(guild_id)
 
     if not guild:
-        print(f"❌ ERROR: Bot is not in guild {guild_id}")
+        if debug: print(f"❌ ERROR: Bot is not in guild {guild_id}")
         return
 
-    print(f"✅ Found guild {guild_id}")
-    print(f"🔍 Looking for channel {channel_id} in guild {guild_id}...")
+    if debug: print(f"✅ Found guild {guild_id}")
+    if debug: print(f"🔍 Looking for channel {channel_id} in guild {guild_id}...")
     channel = guild.get_channel(channel_id)
 
     if not channel:
-        print(f"❌ ERROR: Channel {channel_id} not found in guild {guild_id}")
+        if debug: print(f"❌ ERROR: Channel {channel_id} not found in guild {guild_id}")
         return
 
-    print(f"✅ Found channel {channel_id}")
+    if debug: print(f"✅ Found channel {channel_id}")
 
     if not channel.permissions_for(guild.me).send_messages:
-        print(f"❌ ERROR: Bot lacks permission to send messages in {channel_id}")
+        if debug: print(f"❌ ERROR: Bot lacks permission to send messages in {channel_id}")
         return
 
-    print(f"✅ Bot has permission to send messages in {channel_id}")
+    if debug: print(f"✅ Bot has permission to send messages in {channel_id}")
 
     try:
         await channel.send(content=message)
-        print(f"✅ Message successfully sent to {channel_id}")
+        if debug: print(f"✅ Message successfully sent to {channel_id}")
     except Exception as e:
-        print(f"❌ ERROR: Failed to send message: {e}")
+        if debug: print(f"❌ ERROR: Failed to send message: {e}")
 
 
-@router.post("/test-2")
-async def test_2(
-    guild_id: Annotated[str, Query()],
-    channel_id: Annotated[str, Query()],
-    message: Annotated[str, Query()],
+@router.post("/send-message")
+async def send_message(
+    channel_id: Annotated[str, Body()],
+    message: Annotated[str, Body()],
+    guild_id: Annotated[str, Depends(IsAdmin)],
     db: Annotated[Session, Depends(DBSessionProvider)]
 ) -> DefaultResponseModel:
     
@@ -100,6 +100,7 @@ async def test_2(
     if not channel.permissions_for(guild.me).send_messages:
         raise HTTPException(status_code=403, detail="Bot lacks permission to send messages in this channel")
 
-    asyncio.create_task(send_message(int(guild_id), int(channel_id), message))
+    asyncio.create_task(send_message_coro(int(guild_id), int(channel_id), message))
 
     return DefaultResponseModel(message="Message scheduled")
+

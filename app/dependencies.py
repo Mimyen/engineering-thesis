@@ -1,6 +1,6 @@
 from typing import Annotated, Literal, Optional, Union
 from typing_extensions import Doc
-from fastapi import Request, Header, Depends, HTTPException, status, Form
+from fastapi import Request, Header, Depends, HTTPException, status, Form, Body
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, OAuth2
 from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
 from fastapi.security.utils import get_authorization_scheme_param
@@ -15,6 +15,7 @@ from app.domain.token_blacklist.service import create_blacklist_token, get_black
 from app.domain.token_blacklist.schemas import BlacklistTokenElement
 from jinja2 import Template
 from functools import wraps
+from app.bot import bot
 import jwt
 import datetime
 import os
@@ -621,8 +622,6 @@ def Authorize(
 
     return access_token.user_id
 
-
-
 def get_or_create(
     session, 
     model, 
@@ -685,3 +684,21 @@ def CreateInternalErrorResponse():
             Example(name="Internal Server Error", summary="Internal Server Error", description="Error inside server code, please notify backend developer about the error", value=DefaultErrorModel(detail="Internal Server Error"))
         ]
     )
+
+class GuildID(str): ...
+
+def IsAdmin(
+    request: Request,
+    guild_id: Annotated[str, Body()],
+    discord_user_id: Annotated[str, Body()]
+) -> GuildID | str:
+    
+    if not (guild := bot.get_guild(int(guild_id))):
+        raise HTTPException(status_code=404, detail=f"Bot is not in guild {guild_id}")
+    
+    if not (user := guild.get_member(int(discord_user_id))):
+        raise HTTPException(status_code=404, detail=f"User is not in guild {guild_id}")
+    
+    if not (user.guild_permissions.administrator):
+        raise HTTPException(status_code=403, detail="User lacks permissions in this server")
+    return guild_id
